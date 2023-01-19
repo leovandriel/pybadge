@@ -33,6 +33,14 @@ Install:
     ./install.sh slideshow.py
 
 
+# Shader
+
+Set up the Arduino IDE with PyBadge board and Arcada libraries, see [https://learn.adafruit.com/adafruit-pybadge/setup](https://learn.adafruit.com/adafruit-pybadge/setup).
+
+Open and run `shader.ino`.
+
+To generate a UF2 file, see [https://learn.adafruit.com/adafruit-grand-central/uf2-bootloader-details](https://learn.adafruit.com/adafruit-grand-central/uf2-bootloader-details).
+
 # License
 
 MIT
