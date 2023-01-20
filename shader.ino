@@ -8,6 +8,7 @@ float speed = .1f;
 float ratio = (float)ARCADA_TFT_WIDTH / ARCADA_TFT_HEIGHT;
 float square = min(ARCADA_TFT_WIDTH, ARCADA_TFT_HEIGHT);
 uint16_t mode = 0;
+#define MODES 4
 
 float cosf(float x) {
   x *= 0.159f;
@@ -38,7 +39,7 @@ void setup(void) {
   framebuffer = arcada.getFrameBuffer();
 }
 
-// Credits: Danilo Guanabara, Creation by Silexars
+// Credits: Danilo Guanabara, Creation by Silexars, https://www.shadertoy.com/view/XsXXDn
 uint16_t render_silexars(uint16_t x, uint16_t y, uint16_t t) {
   uint16_t c[3];
   float sx = (float)x / ARCADA_TFT_WIDTH;
@@ -59,29 +60,21 @@ uint16_t render_silexars(uint16_t x, uint16_t y, uint16_t t) {
   return c[0] << 11 | c[1] << 6 | c[2];
 }
 
-// Credits: dynamite, Total Noob
+// Credits: dynamite, Total Noob, https://www.shadertoy.com/view/XdlSDs
 uint16_t render_noob(uint16_t x, uint16_t y, uint16_t t) {
   float px = (2.f * x - ARCADA_TFT_WIDTH) / ARCADA_TFT_HEIGHT;
   float py = (2.f * y - ARCADA_TFT_HEIGHT) / ARCADA_TFT_HEIGHT;
   float uv = atan2(py, px) / 6.283f;
-  float m = uv - (t / 30.f);
+  float m = uv - t / 30.f;
   float col = (m - floor(m)) * 3.f;
-  float r = .25f, g = .25f, b = .25f;
-  if (col < 1.f) {
-    r += 1.f - col;
-    g += col;
-  } else if (col < 2.f) {
-    g += 2.f - col;
-    b += col - 1.f;
-  } else {
-    b += 3.f - col;
-    r += col - 2.f;
-  }
+  float r = col < 1.f ? 1.25f - col : (col < 2.f ? .25f : col - 1.75f);
+  float g = col < 1.f ? .25f + col : (col < 2.f ? 2.25f - col : 0.25f);
+  float b = col < 1.f ? .25f : (col < 2.f ? col - .75f : 3.25f - col);
   float width = 32.f * (.7f + .5f * cosf((2.f * uv - 1.f) * 9.425f * min(max(floor(5.f + 10.f * cosf(t / 10.f)), 0.f), 10.f))) * abs(1.f / (45.f * sqrt(px * px + py * py) - 30.f));
   return (int)min(width * r, 31.f) << 11 | (int)min(width * g, 31.f) << 6 | (int)min(width * b, 31.f);
 }
 
-// Credits: nasana, glowingMarblingBlack
+// Credits: nasana, glowingMarblingBlack, https://www.shadertoy.com/view/WtdXR8
 uint16_t render_marbling(uint16_t x, uint16_t y, uint16_t t) {
   float uvx = (2.f * x - ARCADA_TFT_WIDTH) / square;
   float uvy = (2.f * y - ARCADA_TFT_HEIGHT) / square;
@@ -94,12 +87,14 @@ uint16_t render_marbling(uint16_t x, uint16_t y, uint16_t t) {
   return (int)min(v, 31.f) << 11 | (int)min(v, 31.f) << 6 | (int)min(v, 31.f);
 }
 
-uint16_t render_cube(uint16_t x, uint16_t y, float ex, float ey, float ez, float ux, float uy, float vx, float vy, float vz) {
+
+// Credits: nightjar, cube ray trace, https://www.shadertoy.com/view/clsXzn
+uint16_t render_cube(uint16_t x, uint16_t y, float ex, float ey, float ez, float ux, float uy, float uz, float vx, float vy, float vz) {
   float uvx = (float)x / ARCADA_TFT_WIDTH - .5f;
   float uvy = (float)y / ARCADA_TFT_WIDTH - .5f / ratio;
-  float dx = ex + uvx * ux + uvy * vx;
-  float dy = ey - uvx * uy + uvy * vy;
-  float dz = ez - uvy * vz;
+  float dx = ex + uvx * vx + uvy * ux;
+  float dy = ey + uvx * vy + uvy * uy;
+  float dz = ez + uvx * vz + uvy * uz;
   float ax = (ex + .2f) / dx;
   float ay = (ey + .2f) / dy;
   float az = (ez + .2f) / dz;
@@ -112,20 +107,9 @@ uint16_t render_cube(uint16_t x, uint16_t y, float ex, float ey, float ez, float
   float ix = ex - dx * tt;
   float iy = ey - dy * tt;
   float iz = ez - dz * tt;
-  float r = 0.f, g = 0.f, b = 0.f;
-  if (ix < -.199f) {
-    r = -dx;
-  } else if (ix > .199f) {
-    r = dx;
-  } else if (iy < -.199f) {
-    g = -dy;
-  } else if (iy > .199f) {
-    g = dy;
-  } else if (iz < -.199f) {
-    b = -dz;
-  } else if (iz > .199f) {
-    b = dz;
-  }
+  float r = ix < -.199f ? -dx : (ix < .199f ? 0 : dx);
+  float g = iy < -.199f ? -dy : (iy < .199f ? 0 : dy);
+  float b = iz < -.199f ? -dz : (iz < .199f ? 0 : dz);
   return min(max((int)(r * 32.f), 0), 31) << 11 | min(max((int)(g * 32.f), 0), 31) << 6 | min(max((int)(b * 32.f), 0), 31);
 }
 
@@ -153,31 +137,33 @@ void loop() {
   } else if (mode == 3) {
     sensors_event_t event;
     arcada.accel->getEvent(&event);
-    float mx = -atan2(event.acceleration.x, event.acceleration.z);
-    float my = atan2(event.acceleration.y, event.acceleration.z);
-    float ex = cosf(mx) * cosf(my);
-    float ey = sinf(mx) * cosf(my);
-    float ez = sinf(my);
-    float el = sqrt(ex * ex + ey * ey);
-    float ux = ey / el;
-    float uy = ex / el;
-    float vx = uy * ez;
-    float vy = ux * ez;
-    float vz = ux * ey + uy * ex;
+    float length = sqrt(event.acceleration.x * event.acceleration.x + event.acceleration.y * event.acceleration.y + event.acceleration.z * event.acceleration.z);
+    float ex = event.acceleration.x / length;
+    float ey = -event.acceleration.y / length;
+    float ez = event.acceleration.z / length;
+    float l = sqrt(ey * ey + ez * ez);
+    float ux = 0.f;
+    float uy = -ez / l;
+    float uz = ey / l;
+    float vx = uy * ez - uz * ey;
+    float vy = uz * ex - ux * ez;
+    float vz = ux * ey - uy * ex;
     for (uint16_t y = 0, i = 0; y < ARCADA_TFT_HEIGHT; y++) {
       for (uint16_t x = 0; x < ARCADA_TFT_WIDTH; x++, i++) {
-        framebuffer[i] = render_cube(x, y, ex, ey, ez, ux, uy, vx, vy, vz);
+        framebuffer[i] = render_cube(x, y, ex, ey, ez, ux, uy, uz, vx, vy, vz);
       }
     }
   }
   arcada.blitFrameBuffer(0, 0, false, false);
   counter++;
   uint32_t buttons = arcada.justPressedButtons();
-  if (buttons & ARCADA_BUTTONMASK_A) {
-    mode = (mode + 1) % 4;
+  if (buttons & ARCADA_BUTTONMASK_RIGHT) {
+    mode = (mode + 1) % MODES;
     counter = 0;
-  }
-  if (buttons & ARCADA_BUTTONMASK_B) {
+  } else if (buttons & ARCADA_BUTTONMASK_LEFT) {
+    mode = (mode + MODES - 1) % MODES;
+    counter = 0;
+  } else if (buttons & ARCADA_BUTTONMASK_B) {
     Serial.println(1000.f / (millis() - start));
   }
 }

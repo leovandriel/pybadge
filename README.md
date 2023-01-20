@@ -43,4 +43,6 @@ To generate a UF2 file, see [https://learn.adafruit.com/adafruit-grand-central/u
 
 # License
 
-MIT
+Shaders: [Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License](https://creativecommons.org/licenses/by-nc-sa/3.0/deed.en_US)
+
+The rest: MIT
