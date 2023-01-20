@@ -94,6 +94,41 @@ uint16_t render_marbling(uint16_t x, uint16_t y, uint16_t t) {
   return (int)min(v, 31.f) << 11 | (int)min(v, 31.f) << 6 | (int)min(v, 31.f);
 }
 
+uint16_t render_cube(uint16_t x, uint16_t y, float ex, float ey, float ez, float ux, float uy, float vx, float vy, float vz) {
+  float uvx = (float)x / ARCADA_TFT_WIDTH - .5f;
+  float uvy = (float)y / ARCADA_TFT_WIDTH - .5f / ratio;
+  float dx = ex + uvx * ux + uvy * vx;
+  float dy = ey - uvx * uy + uvy * vy;
+  float dz = ez - uvy * vz;
+  float ax = (ex + .2f) / dx;
+  float ay = (ey + .2f) / dy;
+  float az = (ez + .2f) / dz;
+  float bx = (ex - .2f) / dx;
+  float by = (ey - .2f) / dy;
+  float bz = (ez - .2f) / dz;
+  float mi = max(max(min(ax, bx), min(ay, by)), min(az, bz));
+  float ma = min(min(max(ax, bx), max(ay, by)), max(az, bz));
+  float tt = mi < ma ? mi : 100.f;
+  float ix = ex - dx * tt;
+  float iy = ey - dy * tt;
+  float iz = ez - dz * tt;
+  float r = 0.f, g = 0.f, b = 0.f;
+  if (ix < -.199f) {
+    r = -dx;
+  } else if (ix > .199f) {
+    r = dx;
+  } else if (iy < -.199f) {
+    g = -dy;
+  } else if (iy > .199f) {
+    g = dy;
+  } else if (iz < -.199f) {
+    b = -dz;
+  } else if (iz > .199f) {
+    b = dz;
+  }
+  return min(max((int)(r * 32.f), 0), 31) << 11 | min(max((int)(g * 32.f), 0), 31) << 6 | min(max((int)(b * 32.f), 0), 31);
+}
+
 void loop() {
   uint32_t start = millis();
   arcada.readButtons();
@@ -115,12 +150,31 @@ void loop() {
         framebuffer[i] = render_marbling(x, y, counter);
       }
     }
+  } else if (mode == 3) {
+    sensors_event_t event;
+    arcada.accel->getEvent(&event);
+    float mx = -atan2(event.acceleration.x, event.acceleration.z);
+    float my = atan2(event.acceleration.y, event.acceleration.z);
+    float ex = cosf(mx) * cosf(my);
+    float ey = sinf(mx) * cosf(my);
+    float ez = sinf(my);
+    float el = sqrt(ex * ex + ey * ey);
+    float ux = ey / el;
+    float uy = ex / el;
+    float vx = uy * ez;
+    float vy = ux * ez;
+    float vz = ux * ey + uy * ex;
+    for (uint16_t y = 0, i = 0; y < ARCADA_TFT_HEIGHT; y++) {
+      for (uint16_t x = 0; x < ARCADA_TFT_WIDTH; x++, i++) {
+        framebuffer[i] = render_cube(x, y, ex, ey, ez, ux, uy, vx, vy, vz);
+      }
+    }
   }
   arcada.blitFrameBuffer(0, 0, false, false);
   counter++;
   uint32_t buttons = arcada.justPressedButtons();
   if (buttons & ARCADA_BUTTONMASK_A) {
-    mode = (mode + 1) % 3;
+    mode = (mode + 1) % 4;
     counter = 0;
   }
   if (buttons & ARCADA_BUTTONMASK_B) {
