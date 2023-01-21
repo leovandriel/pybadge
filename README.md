@@ -1,5 +1,7 @@
 # PyBadge Experiments
 
+<img src="cube.jpg" alt="cube ray trace" width="403"/>
+
 # Setup
 
 Setup CircuitPython: [https://circuitpython.org/board/pybadge/](https://circuitpython.org/board/pybadge/)
