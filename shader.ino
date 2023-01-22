@@ -92,9 +92,9 @@ uint16_t render_marbling(uint16_t x, uint16_t y, uint16_t t) {
 uint16_t render_cube(uint16_t x, uint16_t y, float ex, float ey, float ez, float ux, float uy, float uz, float vx, float vy, float vz) {
   float uvx = (float)x / ARCADA_TFT_WIDTH - .5f;
   float uvy = (float)y / ARCADA_TFT_WIDTH - .5f / ratio;
-  float dx = ex + uvx * vx + uvy * ux;
-  float dy = ey + uvx * vy + uvy * uy;
-  float dz = ez + uvx * vz + uvy * uz;
+  float dx = ex + uvx * ux + uvy * vx;
+  float dy = ey + uvx * uy + uvy * vy;
+  float dz = ez + uvx * uz + uvy * vz;
   float ax = (ex + .2f) / dx;
   float ay = (ey + .2f) / dy;
   float az = (ez + .2f) / dz;
@@ -139,15 +139,15 @@ void loop() {
     arcada.accel->getEvent(&event);
     float length = sqrt(event.acceleration.x * event.acceleration.x + event.acceleration.y * event.acceleration.y + event.acceleration.z * event.acceleration.z);
     float ex = event.acceleration.x / length;
-    float ey = -event.acceleration.y / length;
-    float ez = event.acceleration.z / length;
-    float l = sqrt(ey * ey + ez * ez);
-    float ux = 0.f;
-    float uy = -ez / l;
-    float uz = ey / l;
-    float vx = uy * ez - uz * ey;
-    float vy = uz * ex - ux * ez;
-    float vz = ux * ey - uy * ex;
+    float ey = event.acceleration.y / length;
+    float ez = -event.acceleration.z / length;
+    float ll = 1.f + ez;
+    float ux = ex * ex / ll - 1.f;
+    float uy = ey * ex / ll;
+    float uz = ex;
+    float vx = uy;
+    float vy = -ux - ll;
+    float vz = ey;
     for (uint16_t y = 0, i = 0; y < ARCADA_TFT_HEIGHT; y++) {
       for (uint16_t x = 0; x < ARCADA_TFT_WIDTH; x++, i++) {
         framebuffer[i] = render_cube(x, y, ex, ey, ez, ux, uy, uz, vx, vy, vz);
